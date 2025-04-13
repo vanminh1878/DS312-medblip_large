@@ -39,7 +39,7 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, log_wandb=True, load_w
     """
     # Define paths
     train_dir = os.path.join(root_path, "train")
-    train_captions = os.path.join(root_path, "train/train_captions.csv")
+    train_captions = os.path.join(root_path, "train/train/train_captions.csv")
 
     # Load dataset csv
     df_train = load_df(dir_caption=train_captions)
@@ -153,12 +153,12 @@ def predict(root_path, path_weights="/kaggle/working/"):  # CHANGED: default pat
     model.eval()
     model.to("cuda")
 
-    df_valid = os.path.join(root_path, "valid/valid_captions.csv")  # CHANGED: explicit path to CSV
+    df_valid = os.path.join(root_path, "valid/valid/valid_captions.csv")  # CHANGED: explicit path to CSV
     df_valid = pd.read_csv(df_valid)
     dir_valid = os.path.join(root_path, "valid")  # CHANGED: root_path points to /kaggle/input/oggyyy-dataset/
 
     dir_test = os.path.join(root_path, "test")  # CHANGED: assuming test folder is in root_path
-    dir_caption = os.path.join(root_path, "valid/valid_captions.csv")  # CHANGED: explicit path
+    dir_caption = os.path.join(root_path, "valid/valid/valid_captions.csv")  # CHANGED: explicit path
 
     test_ID = os.listdir(dir_test)
     for i in range(len(test_ID)):
