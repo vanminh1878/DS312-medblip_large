@@ -113,11 +113,11 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
                     'epoch': epoch,
                     'loss': loss.item()
                 }
-                checkpoint_path = os.path.join(path_weights, f"medblip_large_step_{global_step}.pth")
+                checkpoint_path = os.path.join(path_weights, "medblip_large.pth")
                 torch.save(checkpoint, checkpoint_path)
                 print(f"Saved checkpoint at step {global_step}: {checkpoint_path}")
 
-        # Save final checkpoint for the epoch
+        # Save checkpoint at the end of each epoch
         checkpoint = {
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
@@ -125,7 +125,9 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
             'epoch': epoch,
             'loss': loss.item()
         }
-        torch.save(checkpoint, os.path.join(path_weights, "medblip_large.pth"))
+        checkpoint_path = os.path.join(path_weights, "medblip_large.pth")
+        torch.save(checkpoint, checkpoint_path)
+        print(f"Saved checkpoint at end of epoch {epoch}: {checkpoint_path}")
         print("Loss:", loss.item())
 
 def predict(root_path, path_weights="/kaggle/working/"):
