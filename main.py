@@ -36,7 +36,7 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
     path_weights: path for weights
     """
     # Define paths
-    train_dir = os.path.join(root_path, "train")
+    train_dir = os.path.join(root_path, "train/train")
     train_captions = os.path.join(root_path, "train/train/train_captions.csv")
 
     # Load dataset csv
@@ -143,9 +143,9 @@ def predict(root_path, path_weights="/kaggle/working/"):
 
     df_valid = os.path.join(root_path, "valid/valid/valid_captions.csv")
     df_valid = pd.read_csv(df_valid)
-    dir_valid = os.path.join(root_path, "valid")
+    dir_valid = os.path.join(root_path, "valid/valid")
 
-    dir_test = os.path.join(root_path, "test")
+    dir_test = os.path.join(root_path, "test/test")
     dir_caption = os.path.join(root_path, "valid/valid/valid_captions.csv")
 
     test_ID = os.listdir(dir_test)
