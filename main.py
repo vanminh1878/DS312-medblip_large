@@ -7,6 +7,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import Resize
 import os
+import glob
 
 from tqdm import tqdm
 
@@ -55,16 +56,18 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
 
     # Load weights if load_weights=True
     if load_weights:
-        checkpoint_path = os.path.join(path_weights, "medblip_large.pth")
-        if os.path.exists(checkpoint_path):
+        # Tìm file checkpoint mới nhất (dựa trên tên file)
+        checkpoint_files = glob.glob(os.path.join(path_weights, "medblip_large_step_*.pth"))
+        if checkpoint_files:
+            checkpoint_path = max(checkpoint_files, key=lambda x: int(x.split('_step_')[-1].split('.pth')[0]))
             checkpoint = torch.load(checkpoint_path)
             model.load_state_dict(checkpoint['model_state_dict'])
             optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             global_step = checkpoint['global_step']
-            print(f"Loaded checkpoint from step {global_step}")
+            print(f"Loaded checkpoint from step {global_step}: {checkpoint_path}")
         else:
-            print(f"No checkpoint found at {checkpoint_path}, starting from scratch")
+            print(f"No checkpoint found in {path_weights}, starting from scratch")
             optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     else:
         optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
@@ -113,7 +116,16 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
                     'epoch': epoch,
                     'loss': loss.item()
                 }
-                checkpoint_path = os.path.join(path_weights, "medblip_large.pth")
+                checkpoint_path = os.path.join(path_weights, f"medblip_large_step_{global_step}.pth")
+                
+                # Xóa file checkpoint cũ (nếu có)
+                checkpoint_files = glob.glob(os.path.join(path_weights, "medblip_large_step_*.pth"))
+                for old_file in checkpoint_files:
+                    if old_file != checkpoint_path:  # Tránh xóa file đang chuẩn bị lưu
+                        os.remove(old_file)
+                        print(f"Removed old checkpoint: {old_file}")
+                
+                # Lưu checkpoint mới
                 torch.save(checkpoint, checkpoint_path)
                 print(f"Saved checkpoint at step {global_step}: {checkpoint_path}")
 
@@ -125,7 +137,16 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
             'epoch': epoch,
             'loss': loss.item()
         }
-        checkpoint_path = os.path.join(path_weights, "medblip_large.pth")
+        checkpoint_path = os.path.join(path_weights, f"medblip_large_step_{global_step}.pth")
+        
+        # Xóa file checkpoint cũ (nếu có)
+        checkpoint_files = glob.glob(os.path.join(path_weights, "medblip_large_step_*.pth"))
+        for old_file in checkpoint_files:
+            if old_file != checkpoint_path:
+                os.remove(old_file)
+                print(f"Removed old checkpoint: {old_file}")
+        
+        # Lưu checkpoint mới
         torch.save(checkpoint, checkpoint_path)
         print(f"Saved checkpoint at end of epoch {epoch}: {checkpoint_path}")
         print("Loss:", loss.item())
@@ -139,7 +160,14 @@ def predict(root_path, path_weights="/kaggle/working/"):
     processor = AutoProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
     model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
 
-    model.load_state_dict(torch.load(os.path.join(path_weights, "medblip_large.pth")))
+    # Tìm file checkpoint mới nhất
+    checkpoint_files = glob.glob(os.path.join(path_weights, "medblip_large_step_*.pth"))
+    if not checkpoint_files:
+        raise FileNotFoundError(f"No checkpoint found in {path_weights}")
+    checkpoint_path = max(checkpoint_files, key=lambda x: int(x.split('_step_')[-1].split('.pth')[0]))
+    model.load_state_dict(torch.load(checkpoint_path)['model_state_dict'])
+    print(f"Loaded checkpoint: {checkpoint_path}")
+    
     model.eval()
     model.to("cuda")
 
