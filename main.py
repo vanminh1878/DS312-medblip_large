@@ -61,17 +61,19 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, log_wandb=True, load_w
         if os.path.exists(checkpoint_path):
             checkpoint = torch.load(checkpoint_path)
             model.load_state_dict(checkpoint['model_state_dict'])
-            optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+            optimizer = torch.optim.AdamW(model.parameters(), lr=lr)  # Khởi tạo optimizer
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             global_step = checkpoint['global_step']
             print(f"Loaded checkpoint from step {global_step}")
         else:
             print(f"No checkpoint found at {checkpoint_path}, starting from scratch")
-        model.eval()
+            optimizer = torch.optim.AdamW(model.parameters(), lr=lr)  # Khởi tạo optimizer nếu không có checkpoint
+    else:
+        optimizer = torch.optim.AdamW(model.parameters(), lr=lr)  # Khởi tạo optimizer khi load_weights=False
 
     # Set up cuda and optimizer
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr) if not load_weights else optimizer
+    #optimizer = torch.optim.AdamW(model.parameters(), lr=lr) if not load_weights else optimizer
     model.to(device)
     model.train()
 
