@@ -11,7 +11,6 @@ import os
 from tqdm import tqdm
 
 import cv2
-import wandb
 import matplotlib.pyplot as plt
 
 from dataset import ImgCaptionDataset
@@ -26,14 +25,13 @@ def load_df(dir_caption):
     """
     return pd.read_csv(dir_caption, delimiter=",")
 
-def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, log_wandb=True, load_weights=False, path_weights="/kaggle/working/"):
+def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, path_weights="/kaggle/working/"):
     """
     Function training
     root_path: root folder of dataset
     batch_size: batch size
     num_epochs: number of epochs
     lr: learning rate
-    log_wandb: log to wandb
     load_weights: load weights
     path_weights: path for weights
     """
@@ -53,7 +51,7 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, log_wandb=True, load_w
     max_length = 200
 
     # Initialize step counter
-    global_step = 0  # ADDED: Track global step
+    global_step = 0
 
     # Load weights if load_weights=True
     if load_weights:
@@ -61,26 +59,20 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, log_wandb=True, load_w
         if os.path.exists(checkpoint_path):
             checkpoint = torch.load(checkpoint_path)
             model.load_state_dict(checkpoint['model_state_dict'])
-            optimizer = torch.optim.AdamW(model.parameters(), lr=lr)  # Khởi tạo optimizer
+            optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             global_step = checkpoint['global_step']
             print(f"Loaded checkpoint from step {global_step}")
         else:
             print(f"No checkpoint found at {checkpoint_path}, starting from scratch")
-            optimizer = torch.optim.AdamW(model.parameters(), lr=lr)  # Khởi tạo optimizer nếu không có checkpoint
+            optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     else:
-        optimizer = torch.optim.AdamW(model.parameters(), lr=lr)  # Khởi tạo optimizer khi load_weights=False
+        optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
-    # Set up cuda and optimizer
+    # Set up cuda and model
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    #optimizer = torch.optim.AdamW(model.parameters(), lr=lr) if not load_weights else optimizer
     model.to(device)
     model.train()
-
-    if log_wandb:
-        os.system('wandb login [YOUR_API_KEY_HERE]')
-        os.environ['WANDB_PROJECT'] = '[YOUR_PROJECT_HERE]'
-        wandb.init(project='MedBLIP2', name="[YOUR_RUN_NAME_HERE]")
 
     # Create dataset for training
     train_dataset = ImgCaptionDataset(
@@ -110,16 +102,10 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, log_wandb=True, load_w
             optimizer.step()
             optimizer.zero_grad()
 
-            global_step += 1  # ADDED: Increment step counter
-
-            if log_wandb:
-                wandb.log({"train/epoch": epoch})
-                wandb.log({"train/loss": loss.item()})
-                wandb.log({"train/lr": optimizer.param_groups[-1]['lr']})
-                wandb.log({"train/global_step": global_step})  # ADDED: Log global step
+            global_step += 1
 
             # Save checkpoint every 100 steps
-            if global_step % 100 == 0:  # ADDED: Checkpoint every 100 steps
+            if global_step % 100 == 0:
                 checkpoint = {
                     'model_state_dict': model.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
@@ -139,10 +125,10 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, log_wandb=True, load_w
             'epoch': epoch,
             'loss': loss.item()
         }
-        torch.save(checkpoint, os.path.join(path_weights, "medblip_large.pth"))  # ADDED: Save as default checkpoint
+        torch.save(checkpoint, os.path.join(path_weights, "medblip_large.pth"))
         print("Loss:", loss.item())
 
-def predict(root_path, path_weights="/kaggle/working/"):  # CHANGED: default path_weights
+def predict(root_path, path_weights="/kaggle/working/"):
     """
     root_path: root folder of dataset
     path_weights: path for weights file
@@ -151,16 +137,16 @@ def predict(root_path, path_weights="/kaggle/working/"):  # CHANGED: default pat
     processor = AutoProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
     model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
 
-    model.load_state_dict(torch.load(os.path.join(path_weights, "medblip_large.pth")))  # CHANGED: use os.path.join
+    model.load_state_dict(torch.load(os.path.join(path_weights, "medblip_large.pth")))
     model.eval()
     model.to("cuda")
 
-    df_valid = os.path.join(root_path, "valid/valid/valid_captions.csv")  # CHANGED: explicit path to CSV
+    df_valid = os.path.join(root_path, "valid/valid/valid_captions.csv")
     df_valid = pd.read_csv(df_valid)
-    dir_valid = os.path.join(root_path, "valid")  # CHANGED: root_path points to /kaggle/input/oggyyy-dataset/
+    dir_valid = os.path.join(root_path, "valid")
 
-    dir_test = os.path.join(root_path, "test")  # CHANGED: assuming test folder is in root_path
-    dir_caption = os.path.join(root_path, "valid/valid/valid_captions.csv")  # CHANGED: explicit path
+    dir_test = os.path.join(root_path, "test")
+    dir_caption = os.path.join(root_path, "valid/valid/valid_captions.csv")
 
     test_ID = os.listdir(dir_test)
     for i in range(len(test_ID)):
@@ -190,12 +176,12 @@ def predict(root_path, path_weights="/kaggle/working/"):  # CHANGED: default pat
 
     # Get inferences test
     test_results = get_inferences(test_ID, model, dir_test)
-    save_df_to_csv(test_results, "/kaggle/working/run.csv")  # CHANGED: save to /kaggle/working/
+    save_df_to_csv(test_results, "/kaggle/working/run.csv")
 
     # Get inferences valid
     valid_ID = df_valid["ID"]
     valid_results = get_inferences(valid_ID, model, dir_valid)
-    save_df_to_csv(valid_results, "/kaggle/working/valid.csv")  # CHANGED: save to /kaggle/working/
+    save_df_to_csv(valid_results, "/kaggle/working/valid.csv")
     len(valid_results)
 
 def main():
@@ -207,24 +193,23 @@ def main():
 
     # Adds a subparser for the 'train' command
     parser_train = subparsers.add_parser('train')
-    parser_train.add_argument('--root_path', type=str, default='/kaggle/input/oggyyy-dataset/')  # CHANGED: default to Kaggle input
+    parser_train.add_argument('--root_path', type=str, default='/kaggle/input/oggyyy-dataset/')
     parser_train.add_argument('--batch_size', type=int, default=4)
     parser_train.add_argument('--num_epochs', type=int, default=16)
     parser_train.add_argument('--lr', type=float, default=1e-5)
-    parser_train.add_argument('--log_wandb', type=bool, default=False)
     parser_train.add_argument('--load_weights', type=bool, default=False)
-    parser_train.add_argument('--path_weights', type=str, default='/kaggle/working/')  # CHANGED: default to Kaggle working dir
+    parser_train.add_argument('--path_weights', type=str, default='/kaggle/working/')
 
     # Adds a subparser for the 'predict' command
     parser_predict = subparsers.add_parser('predict')
-    parser_predict.add_argument('--root_path', type=str, default='/kaggle/input/oggyyy-dataset/')  # CHANGED: default to Kaggle input
-    parser_predict.add_argument('--path_weights', type=str, default='/kaggle/working/')  # CHANGED: default to Kaggle working dir
+    parser_predict.add_argument('--root_path', type=str, default='/kaggle/input/oggyyy-dataset/')
+    parser_predict.add_argument('--path_weights', type=str, default='/kaggle/working/')
 
     # Parses the command-line arguments
     args = parser.parse_args()
 
     if args.command == 'train':
-        train(args.root_path, args.batch_size, args.num_epochs, args.lr, args.log_wandb, args.load_weights, args.path_weights)
+        train(args.root_path, args.batch_size, args.num_epochs, args.lr, args.load_weights, args.path_weights)
     elif args.command == 'predict':
         predict(args.root_path, args.path_weights)
 
