@@ -1,4 +1,4 @@
-# Import important libraries
+# Nhập các thư viện cần thiết
 import pandas as pd
 import transformers
 from transformers import BlipProcessor, BlipForConditionalGeneration, AutoProcessor
@@ -18,45 +18,44 @@ from dataset import ImgCaptionDataset
 import argparse
 
 def save_df_to_csv(df, file_path):
+    """Lưu dataframe vào file CSV"""
     df.to_csv(file_path, index=False)
 
 def load_df(dir_caption):
-    """
-    Function load dataframe
-    """
+    """Tải dataframe từ file CSV"""
     return pd.read_csv(dir_caption, delimiter=",")
 
 def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, path_weights="/kaggle/working/"):
     """
-    Function training
-    root_path: root folder of dataset
-    batch_size: batch size
-    num_epochs: number of epochs
-    lr: learning rate
-    load_weights: load weights
-    path_weights: path for weights
+    Hàm huấn luyện mô hình
+    root_path: thư mục gốc của dataset
+    batch_size: kích thước batch
+    num_epochs: số epoch
+    lr: tốc độ học
+    load_weights: tải trọng số đã lưu
+    path_weights: đường dẫn lưu trọng số
     """
-    # Define paths
+    # Định nghĩa các đường dẫn
     train_dir = os.path.join(root_path, "train/train")
     train_captions = os.path.join(root_path, "train/train/train_captions.csv")
 
-    # Load dataset csv
+    # Tải dataset từ CSV
     df_train = load_df(dir_caption=train_captions)
 
-    # Load weights
+    # Tải mô hình và processor
     processor = AutoProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
     model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large", torch_dtype=torch.float32)
 
-    # Parameters
+    # Thiết lập tham số
     image_size = (224, 224)
     max_length = 200
 
-    # Initialize step counter
+    # Khởi tạo bộ đếm bước
     global_step = 0
 
-    # Load weights if load_weights=True
+    # Tải trọng số nếu load_weights=True
     if load_weights:
-        # Tìm file checkpoint mới nhất (dựa trên tên file)
+        # Tìm file checkpoint mới nhất
         checkpoint_files = glob.glob(os.path.join(path_weights, "medblip_large_step_*.pth"))
         if checkpoint_files:
             checkpoint_path = max(checkpoint_files, key=lambda x: int(x.split('_step_')[-1].split('.pth')[0]))
@@ -65,19 +64,19 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
             optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             global_step = checkpoint['global_step']
-            print(f"Loaded checkpoint from step {global_step}: {checkpoint_path}")
+            print(f"Đã tải checkpoint từ bước {global_step}: {checkpoint_path}")
         else:
-            print(f"No checkpoint found in {path_weights}, starting from scratch")
+            print(f"Không tìm thấy checkpoint trong {path_weights}, bắt đầu từ đầu")
             optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     else:
         optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
-    # Set up cuda and model
+    # Thiết lập thiết bị và mô hình
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model.to(device)
     model.train()
 
-    # Create dataset for training
+    # Tạo dataset cho huấn luyện
     train_dataset = ImgCaptionDataset(
         df=df_train,
         path=train_dir,
@@ -87,9 +86,9 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
     )
     train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
 
-    # Start training
+    # Bắt đầu huấn luyện
     for epoch in range(num_epochs):
-        print("Epoch:", epoch)
+        print(f"Epoch: {epoch}")
         for batch in tqdm(train_dataloader):
             input_ids = batch.pop("input_ids").to(device)
             pixel_values = batch.pop("pixel_values").to(device)
@@ -107,29 +106,7 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
 
             global_step += 1
 
-            # Save checkpoint every 100 steps
-            if global_step % 100 == 0:
-                checkpoint = {
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'global_step': global_step,
-                    'epoch': epoch,
-                    'loss': loss.item()
-                }
-                checkpoint_path = os.path.join(path_weights, f"medblip_large_step_{global_step}.pth")
-                
-                # Xóa file checkpoint cũ (nếu có)
-                checkpoint_files = glob.glob(os.path.join(path_weights, "medblip_large_step_*.pth"))
-                for old_file in checkpoint_files:
-                    if old_file != checkpoint_path:  # Tránh xóa file đang chuẩn bị lưu
-                        os.remove(old_file)
-                        print(f"Removed old checkpoint: {old_file}")
-                
-                # Lưu checkpoint mới
-                torch.save(checkpoint, checkpoint_path)
-                print(f"Saved checkpoint at step {global_step}: {checkpoint_path}")
-
-        # Save checkpoint at the end of each epoch
+        # Lưu checkpoint sau mỗi epoch
         checkpoint = {
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
@@ -139,38 +116,40 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
         }
         checkpoint_path = os.path.join(path_weights, f"medblip_large_step_{global_step}.pth")
         
-        # Xóa file checkpoint cũ (nếu có)
+        # Xóa checkpoint cũ (nếu có)
         checkpoint_files = glob.glob(os.path.join(path_weights, "medblip_large_step_*.pth"))
         for old_file in checkpoint_files:
             if old_file != checkpoint_path:
                 os.remove(old_file)
-                print(f"Removed old checkpoint: {old_file}")
+                print(f"Đã xóa checkpoint cũ: {old_file}")
         
         # Lưu checkpoint mới
         torch.save(checkpoint, checkpoint_path)
-        print(f"Saved checkpoint at end of epoch {epoch}: {checkpoint_path}")
-        print("Loss:", loss.item())
+        print(f"Đã lưu checkpoint sau epoch {epoch}: {checkpoint_path}")
+        print(f"Loss: {loss.item()}")
 
 def predict(root_path, path_weights="/kaggle/working/"):
     """
-    root_path: root folder of dataset
-    path_weights: path for weights file
+    Hàm dự đoán
+    root_path: thư mục gốc của dataset
+    path_weights: đường dẫn đến file trọng số
     """
-    # Load weights pretrained
+    # Tải mô hình và processor
     processor = AutoProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
     model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
 
     # Tìm file checkpoint mới nhất
     checkpoint_files = glob.glob(os.path.join(path_weights, "medblip_large_step_*.pth"))
     if not checkpoint_files:
-        raise FileNotFoundError(f"No checkpoint found in {path_weights}")
+        raise FileNotFoundError(f"Không tìm thấy checkpoint trong {path_weights}")
     checkpoint_path = max(checkpoint_files, key=lambda x: int(x.split('_step_')[-1].split('.pth')[0]))
     model.load_state_dict(torch.load(checkpoint_path)['model_state_dict'])
-    print(f"Loaded checkpoint: {checkpoint_path}")
+    print(f"Đã tải checkpoint: {checkpoint_path}")
     
     model.eval()
     model.to("cuda")
 
+    # Tải dữ liệu validation
     df_valid = os.path.join(root_path, "valid/valid/valid_captions.csv")
     df_valid = pd.read_csv(df_valid)
     dir_valid = os.path.join(root_path, "valid/valid")
@@ -183,9 +162,7 @@ def predict(root_path, path_weights="/kaggle/working/"):
         test_ID[i] = test_ID[i].replace(".jpg", "")
 
     def get_inferences(IDs, model, paths, max_new_tokens=200):
-        """
-        Function to get inferences
-        """
+        """Hàm lấy kết quả dự đoán"""
         data = []
         for ID in tqdm(IDs):
             path = os.path.join(paths, ID + ".jpg")
@@ -204,24 +181,25 @@ def predict(root_path, path_weights="/kaggle/working/"):
         df = pd.DataFrame(data, columns=['ID', 'Caption'])
         return df
 
-    # Get inferences test
+    # Lấy kết quả dự đoán cho tập test
     test_results = get_inferences(test_ID, model, dir_test)
     save_df_to_csv(test_results, "/kaggle/working/run.csv")
 
-    # Get inferences valid
+    # Lấy kết quả dự đoán cho tập valid
     valid_ID = df_valid["ID"]
     valid_results = get_inferences(valid_ID, model, dir_valid)
     save_df_to_csv(valid_results, "/kaggle/working/valid.csv")
     len(valid_results)
 
 def main():
-    # Initializes a parser for command-line arguments
+    """Hàm chính"""
+    # Khởi tạo parser cho tham số dòng lệnh
     parser = argparse.ArgumentParser()
 
-    # Creates subparsers for different commands
+    # Tạo subparser cho các lệnh
     subparsers = parser.add_subparsers(dest='command')
 
-    # Adds a subparser for the 'train' command
+    # Thêm subparser cho lệnh 'train'
     parser_train = subparsers.add_parser('train')
     parser_train.add_argument('--root_path', type=str, default='/kaggle/input/oggyyy-dataset/')
     parser_train.add_argument('--batch_size', type=int, default=4)
@@ -230,12 +208,12 @@ def main():
     parser_train.add_argument('--load_weights', type=bool, default=False)
     parser_train.add_argument('--path_weights', type=str, default='/kaggle/working/')
 
-    # Adds a subparser for the 'predict' command
+    # Thêm subparser cho lệnh 'predict'
     parser_predict = subparsers.add_parser('predict')
     parser_predict.add_argument('--root_path', type=str, default='/kaggle/input/oggyyy-dataset/')
     parser_predict.add_argument('--path_weights', type=str, default='/kaggle/working/')
 
-    # Parses the command-line arguments
+    # Phân tích tham số dòng lệnh
     args = parser.parse_args()
 
     if args.command == 'train':
