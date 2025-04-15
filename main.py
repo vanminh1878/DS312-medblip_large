@@ -2,18 +2,14 @@
 import pandas as pd
 import transformers
 from transformers import BlipProcessor, BlipForConditionalGeneration, AutoProcessor
-
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import Resize
 import os
 import glob
-
 from tqdm import tqdm
-
 import cv2
 import matplotlib.pyplot as plt
-
 from dataset import ImgCaptionDataset
 import argparse
 
@@ -50,8 +46,9 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
     image_size = (224, 224)
     max_length = 200
 
-    # Khởi tạo bộ đếm bước
+    # Khởi tạo bộ đếm bước và epoch
     global_step = 0
+    start_epoch = 0
 
     # Tải trọng số nếu load_weights=True
     if load_weights:
@@ -64,7 +61,8 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
             optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             global_step = checkpoint['global_step']
-            print(f"Đã tải checkpoint từ bước {global_step}: {checkpoint_path}")
+            start_epoch = checkpoint['epoch'] + 1  # Tiếp tục từ epoch tiếp theo
+            print(f"Đã tải checkpoint từ bước {global_step}, epoch {checkpoint['epoch']}: {checkpoint_path}")
         else:
             print(f"Không tìm thấy checkpoint trong {path_weights}, bắt đầu từ đầu")
             optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
@@ -87,9 +85,10 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
     train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
 
     # Bắt đầu huấn luyện
-    for epoch in range(num_epochs):
-        print(f"Epoch: {epoch}")
-        for batch in tqdm(train_dataloader):
+    for epoch in range(start_epoch, start_epoch + num_epochs):
+        print(f"Epoch: {epoch + 1}")  # Hiển thị epoch bắt đầu từ 1 cho dễ hiểu
+        # Thanh tiến trình cho batch trong epoch
+        for batch in tqdm(train_dataloader, desc=f"Training Epoch {epoch + 1}"):
             input_ids = batch.pop("input_ids").to(device)
             pixel_values = batch.pop("pixel_values").to(device)
             attention_marks = batch.pop("attention_mask").to(device)
@@ -116,16 +115,9 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
         }
         checkpoint_path = os.path.join(path_weights, f"medblip_large_step_{global_step}.pth")
         
-        # Xóa checkpoint cũ (nếu có)
-        checkpoint_files = glob.glob(os.path.join(path_weights, "medblip_large_step_*.pth"))
-        for old_file in checkpoint_files:
-            if old_file != checkpoint_path:
-                os.remove(old_file)
-                print(f"Đã xóa checkpoint cũ: {old_file}")
-        
         # Lưu checkpoint mới
         torch.save(checkpoint, checkpoint_path)
-        print(f"Đã lưu checkpoint sau epoch {epoch}: {checkpoint_path}")
+        print(f"Đã lưu checkpoint sau epoch {epoch + 1}: {checkpoint_path}")
         print(f"Loss: {loss.item()}")
 
 def predict(root_path, path_weights="/kaggle/working/"):
@@ -164,7 +156,7 @@ def predict(root_path, path_weights="/kaggle/working/"):
     def get_inferences(IDs, model, paths, max_new_tokens=200):
         """Hàm lấy kết quả dự đoán"""
         data = []
-        for ID in tqdm(IDs):
+        for ID in tqdm(IDs, desc="Generating captions"):
             path = os.path.join(paths, ID + ".jpg")
             image = cv2.imread(path)
             image = cv2.resize(image, (224, 224))
@@ -203,7 +195,7 @@ def main():
     parser_train = subparsers.add_parser('train')
     parser_train.add_argument('--root_path', type=str, default='/kaggle/input/oggyyy-dataset/')
     parser_train.add_argument('--batch_size', type=int, default=4)
-    parser_train.add_argument('--num_epochs', type=int, default=16)
+    parser_train.add_argument('--num_epochs', type=int, default=2)  # Đặt mặc định thành 2
     parser_train.add_argument('--lr', type=float, default=1e-5)
     parser_train.add_argument('--load_weights', type=bool, default=False)
     parser_train.add_argument('--path_weights', type=str, default='/kaggle/working/')
