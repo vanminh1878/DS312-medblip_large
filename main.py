@@ -149,9 +149,9 @@ def predict(root_path, path_weights="/kaggle/working/"):
     dir_test = os.path.join(root_path, "test/test")
     dir_caption = os.path.join(root_path, "valid/valid/valid_captions.csv")
 
-    test_ID = os.listdir(dir_test)
-    for i in range(len(test_ID)):
-        test_ID[i] = test_ID[i].replace(".jpg", "")
+    # test_ID = os.listdir(dir_test)
+    # for i in range(len(test_ID)):
+    #     test_ID[i] = test_ID[i].replace(".jpg", "")
 
     def get_inferences(IDs, model, paths, max_new_tokens=200):
         """Hàm lấy kết quả dự đoán"""
@@ -173,9 +173,9 @@ def predict(root_path, path_weights="/kaggle/working/"):
         df = pd.DataFrame(data, columns=['ID', 'Caption'])
         return df
 
-    # Lấy kết quả dự đoán cho tập test
-    test_results = get_inferences(test_ID, model, dir_test)
-    save_df_to_csv(test_results, "/kaggle/working/run.csv")
+    # # Lấy kết quả dự đoán cho tập test
+    # test_results = get_inferences(test_ID, model, dir_test)
+    # save_df_to_csv(test_results, "/kaggle/working/run.csv")
 
     # Lấy kết quả dự đoán cho tập valid
     valid_ID = df_valid["ID"]
