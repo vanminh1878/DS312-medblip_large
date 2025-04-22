@@ -1,7 +1,8 @@
 # Nhập các thư viện cần thiết
 import pandas as pd
 import transformers
-from transformers import BlipProcessor, BlipForConditionalGeneration, AutoProcessor
+#from transformers import BlipProcessor, BlipForConditionalGeneration, AutoProcessor
+from transformers import Blip2Processor, Blip2ForConditionalGeneration, AutoProcessor
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import Resize
@@ -39,8 +40,10 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
     df_train = load_df(dir_caption=train_captions)
 
     # Tải mô hình và processor
-    processor = AutoProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
-    model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large", torch_dtype=torch.float32)
+    # processor = AutoProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
+    # model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large", torch_dtype=torch.float32)
+    processor = AutoProcessor.from_pretrained("Salesforce/blip2-opt-2.7b")
+    model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b", torch_dtype=torch.float32)
 
     # Thiết lập tham số
     image_size = (224, 224)
@@ -127,8 +130,10 @@ def predict(root_path, path_weights="/kaggle/working/"):
     path_weights: đường dẫn đến file trọng số
     """
     # Tải mô hình và processor
-    processor = AutoProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
-    model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
+    # processor = AutoProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
+    # model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
+    processor = AutoProcessor.from_pretrained("Salesforce/blip2-opt-2.7b")
+    model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b")
 
     # Tìm file checkpoint mới nhất
     checkpoint_files = glob.glob(os.path.join(path_weights, "medblip_large_step_*.pth"))
