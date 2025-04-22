@@ -42,8 +42,8 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
     # Tải mô hình và processor
     # processor = AutoProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
     # model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large", torch_dtype=torch.float32)
-    processor = AutoProcessor.from_pretrained("Salesforce/blip2-opt-2.7b")
-    model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b", torch_dtype=torch.float32)
+    processor = AutoProcessor.from_pretrained("Salesforce/blip2-opt-2.7b", trust_remote_code=True)
+    model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b", torch_dtype=torch.float32, trust_remote_code=True)
 
     # Thiết lập tham số
     image_size = (224, 224)
@@ -132,8 +132,8 @@ def predict(root_path, path_weights="/kaggle/working/"):
     # Tải mô hình và processor
     # processor = AutoProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
     # model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
-    processor = AutoProcessor.from_pretrained("Salesforce/blip2-opt-2.7b")
-    model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b")
+    processor = AutoProcessor.from_pretrained("Salesforce/blip2-opt-2.7b", trust_remote_code=True)
+    model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b", torch_dtype=torch.float32, trust_remote_code=True)
 
     # Tìm file checkpoint mới nhất
     checkpoint_files = glob.glob(os.path.join(path_weights, "medblip_large_step_*.pth"))
