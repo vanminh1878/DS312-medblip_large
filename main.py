@@ -2,7 +2,6 @@
 import pandas as pd
 import transformers
 from transformers import BlipProcessor, BlipForConditionalGeneration, AutoProcessor
-#from transformers import Blip2Processor, Blip2ForConditionalGeneration, AutoProcessor
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import Resize
@@ -42,8 +41,6 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
     # Tải mô hình và processor
     processor = AutoProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
     model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large", torch_dtype=torch.float32)
-    #processor = AutoProcessor.from_pretrained("Salesforce/blip2-opt-2.7b", trust_remote_code=True)
-    #model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b", torch_dtype=torch.float32, trust_remote_code=True)
 
     # Thiết lập tham số
     image_size = (224, 224)
@@ -55,7 +52,6 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
 
     # Tải trọng số nếu load_weights=True
     if load_weights:
-        # Tìm file checkpoint mới nhất
         checkpoint_files = glob.glob(os.path.join(path_weights, "medblip_large_step_*.pth"))
         if checkpoint_files:
             checkpoint_path = max(checkpoint_files, key=lambda x: int(x.split('_step_')[-1].split('.pth')[0]))
@@ -64,7 +60,7 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
             optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             global_step = checkpoint['global_step']
-            start_epoch = checkpoint['epoch'] + 1  # Tiếp tục từ epoch tiếp theo
+            start_epoch = checkpoint['epoch'] + 1
             print(f"Đã tải checkpoint từ bước {global_step}, epoch {checkpoint['epoch']}: {checkpoint_path}")
         else:
             print(f"Không tìm thấy checkpoint trong {path_weights}, bắt đầu từ đầu")
@@ -89,8 +85,7 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
 
     # Bắt đầu huấn luyện
     for epoch in range(start_epoch, start_epoch + num_epochs):
-        print(f"Epoch: {epoch + 1}")  # Hiển thị epoch bắt đầu từ 1 cho dễ hiểu
-        # Thanh tiến trình cho batch trong epoch
+        print(f"Epoch: {epoch + 1}")
         for batch in tqdm(train_dataloader, desc=f"Training Epoch {epoch + 1}"):
             input_ids = batch.pop("input_ids").to(device)
             pixel_values = batch.pop("pixel_values").to(device)
@@ -117,8 +112,6 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
             'loss': loss.item()
         }
         checkpoint_path = os.path.join(path_weights, f"medblip_large_step_{global_step}.pth")
-        
-        # Lưu checkpoint mới
         torch.save(checkpoint, checkpoint_path)
         print(f"Đã lưu checkpoint sau epoch {epoch + 1}: {checkpoint_path}")
         print(f"Loss: {loss.item()}")
@@ -132,17 +125,14 @@ def predict(root_path, path_weights="/kaggle/working/"):
     # Tải mô hình và processor
     processor = AutoProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
     model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
-    #processor = AutoProcessor.from_pretrained("Salesforce/blip2-opt-2.7b", trust_remote_code=True)
-    #model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b", torch_dtype=torch.float32, trust_remote_code=True)
 
-    # Tìm file checkpoint mới nhất
-    checkpoint_files = glob.glob(os.path.join(path_weights, "medblip_large_step_*.pth"))
-    if not checkpoint_files:
-        raise FileNotFoundError(f"Không tìm thấy checkpoint trong {path_weights}")
-    checkpoint_path = max(checkpoint_files, key=lambda x: int(x.split('_step_')[-1].split('.pth')[0]))
+    # Tải checkpoint cụ thể
+    checkpoint_path = os.path.join(path_weights, "medblip_large_step_20023.pth")
+    if not os.path.exists(checkpoint_path):
+        raise FileNotFoundError(f"Không tìm thấy checkpoint: {checkpoint_path}")
     model.load_state_dict(torch.load(checkpoint_path)['model_state_dict'])
     print(f"Đã tải checkpoint: {checkpoint_path}")
-    
+
     model.eval()
     model.to("cuda")
 
@@ -152,37 +142,13 @@ def predict(root_path, path_weights="/kaggle/working/"):
     dir_valid = os.path.join(root_path, "valid/valid")
 
     dir_test = os.path.join(root_path, "test/test")
-    dir_caption = os.path.join(root_path, "valid/valid/valid_captions.csv")
 
     test_ID = os.listdir(dir_test)
     for i in range(len(test_ID)):
-         test_ID[i] = test_ID[i].replace(".jpg", "")
+        test_ID[i] = test_ID[i].replace(".jpg", "")
 
-    # def get_inferences(IDs, model, paths, max_new_tokens=200):
-    #     """Hàm lấy kết quả dự đoán"""
-    #     data = []
-    #     for ID in tqdm(IDs, desc="Generating captions"):
-    #         path = os.path.join(paths, ID + ".jpg")
-    #         image = cv2.imread(path)
-    #         image = cv2.resize(image, (224, 224))
-    #         inputs = processor(image, return_tensors="pt").to("cuda")
-    #         generated_ids = model.generate(
-    #             **inputs,
-    #             max_new_tokens=max_new_tokens,
-    #             no_repeat_ngram_size=2,
-    #             num_beams=5
-    #         )
-    #         generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
-    #         data.append([ID, generated_text])
-
-    #     df = pd.DataFrame(data, columns=['ID', 'Caption'])
-    #     return df
     def get_inferences(IDs, model, paths, max_new_tokens=200):
         """Hàm lấy kết quả dự đoán"""
-        # Tải file cui_names.csv để ánh xạ từ Name sang CUI
-        cui_names = pd.read_csv("/kaggle/input/cui_names.csv")  # Đường dẫn đến file cui_names.csv
-        name_to_cui_dict = dict(zip(cui_names['Name'], cui_names['CUI']))
-
         data = []
         for ID in tqdm(IDs, desc="Generating captions"):
             path = os.path.join(paths, ID + ".jpg")
@@ -196,58 +162,38 @@ def predict(root_path, path_weights="/kaggle/working/"):
                 num_beams=5
             )
             generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
-            
-            # Ánh xạ từ Caption sang CUI
-            # Cách đơn giản: Tìm kiếm từ khóa trong generated_text khớp với Name trong cui_names.csv
-            matched_cuis = []
-            for name, cui in name_to_cui_dict.items():
-                if name.lower() in generated_text.lower():  # So khớp từ khóa (không phân biệt hoa thường)
-                    matched_cuis.append(cui)
-            
-            # Nếu không tìm thấy CUI nào, đặt giá trị mặc định
-            if not matched_cuis:
-                matched_cuis = ["Unknown_CUI"]
-            
-            # Ghép các CUI thành chuỗi, phân tách bằng dấu chấm phẩy
-            cui_str = ";".join(matched_cuis)
-            data.append([ID, cui_str])
-
-        df = pd.DataFrame(data, columns=['ID', 'CUIs'])  # Thay 'Caption' thành 'CUI'
+            data.append([ID, generated_text])
+        df = pd.DataFrame(data, columns=['ID', 'Caption'])
         return df
 
-    # Lấy kết quả dự đoán cho tập test
+    # Lấy kết quả dự đoán cho tập valid
+    valid_ID = df_valid["ID"]
+    valid_results = get_inferences(valid_ID, model, dir_valid)
+    save_df_to_csv(valid_results, "/kaggle/working/valid.csv")
+    print(f"Đã lưu kết quả valid vào /kaggle/working/valid.csv")
+
+    # Lấy kết quả dự đoán cho tập test (giữ nguyên để tạo submission nếu cần)
     test_results = get_inferences(test_ID, model, dir_test)
     save_df_to_csv(test_results, "/kaggle/working/submission.csv")
-
-    # # Lấy kết quả dự đoán cho tập valid
-    # valid_ID = df_valid["ID"]
-    # valid_results = get_inferences(valid_ID, model, dir_valid)
-    # save_df_to_csv(valid_results, "/kaggle/working/valid.csv")
-    # len(valid_results)
+    print(f"Đã lưu kết quả test vào /kaggle/working/submission.csv")
 
 def main():
     """Hàm chính"""
-    # Khởi tạo parser cho tham số dòng lệnh
     parser = argparse.ArgumentParser()
-
-    # Tạo subparser cho các lệnh
     subparsers = parser.add_subparsers(dest='command')
 
-    # Thêm subparser cho lệnh 'train'
     parser_train = subparsers.add_parser('train')
     parser_train.add_argument('--root_path', type=str, default='/kaggle/input/oggyyy-dataset/')
     parser_train.add_argument('--batch_size', type=int, default=4)
-    parser_train.add_argument('--num_epochs', type=int, default=2)  # Đặt mặc định thành 2
+    parser_train.add_argument('--num_epochs', type=int, default=2)
     parser_train.add_argument('--lr', type=float, default=1e-5)
     parser_train.add_argument('--load_weights', type=bool, default=False)
     parser_train.add_argument('--path_weights', type=str, default='/kaggle/working/')
 
-    # Thêm subparser cho lệnh 'predict'
     parser_predict = subparsers.add_parser('predict')
     parser_predict.add_argument('--root_path', type=str, default='/kaggle/input/oggyyy-dataset/')
     parser_predict.add_argument('--path_weights', type=str, default='/kaggle/working/')
 
-    # Phân tích tham số dòng lệnh
     args = parser.parse_args()
 
     if args.command == 'train':
