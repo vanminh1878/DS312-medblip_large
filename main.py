@@ -9,6 +9,7 @@ import os
 import glob
 from tqdm import tqdm
 import cv2
+from PIL import Image
 from dataset import ImgCaptionDataset
 import argparse
 
@@ -43,7 +44,8 @@ def train(root_path, batch_size=1, num_epochs=2, lr=1e-5, load_weights=False, pa
             processor = AutoProcessor.from_pretrained(
                 "openbmb/MiniCPM-Llama3-V-2_5",
                 revision="main",
-                force_download=False
+                force_download=False,
+                trust_remote_code=True
             )
             model = AutoModelForCausalLM.from_pretrained(
                 "openbmb/MiniCPM-Llama3-V-2_5",
@@ -61,7 +63,8 @@ def train(root_path, batch_size=1, num_epochs=2, lr=1e-5, load_weights=False, pa
                 processor = AutoProcessor.from_pretrained(
                     "openbmb/MiniCPM-Llama3-V-2_5",
                     revision="main",
-                    force_download=True
+                    force_download=True,
+                    trust_remote_code=True
                 )
                 model = AutoModelForCausalLM.from_pretrained(
                     "openbmb/MiniCPM-Llama3-V-2_5",
@@ -166,7 +169,8 @@ def predict(root_path, path_weights="/kaggle/working/"):
             processor = AutoProcessor.from_pretrained(
                 "openbmb/MiniCPM-Llama3-V-2_5",
                 revision="main",
-                force_download=False
+                force_download=False,
+                trust_remote_code=True
             )
             model = AutoModelForCausalLM.from_pretrained(
                 "openbmb/MiniCPM-Llama3-V-2_5",
@@ -184,7 +188,8 @@ def predict(root_path, path_weights="/kaggle/working/"):
                 processor = AutoProcessor.from_pretrained(
                     "openbmb/MiniCPM-Llama3-V-2_5",
                     revision="main",
-                    force_download=True
+                    force_download=True,
+                    trust_remote_code=True
                 )
                 model = AutoModelForCausalLM.from_pretrained(
                     "openbmb/MiniCPM-Llama3-V-2_5",
