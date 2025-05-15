@@ -31,6 +31,10 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
     load_weights: tải trọng số đã lưu
     path_weights: đường dẫn lưu trọng số
     """
+    # Định nghĩa thiết bị
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Đang sử dụng thiết bị: {device}")
+
     # Định nghĩa các đường dẫn
     train_dir = os.path.join(root_path, "train/train")
     train_captions = os.path.join(root_path, "train/train/train_captions.csv")
@@ -41,10 +45,14 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
     # Tải mô hình và processor
     processor = AutoProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
     model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large", torch_dtype=torch.float32)
+    model = model.to(device)  # Chuyển mô hình sang GPU ngay sau khi khởi tạo
 
     # Thiết lập tham số
     image_size = (224, 224)
     max_length = 200
+
+    # Khởi tạo optimizer
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
     # Khởi tạo bộ đếm bước và epoch
     global_step = 0
@@ -56,23 +64,21 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
         checkpoint_files = glob.glob(os.path.join(path_weights, "medblip_large_step_*.pth"))
         if checkpoint_files:
             checkpoint_path = max(checkpoint_files, key=lambda x: int(x.split('_step_')[-1].split('.pth')[0]))
-            checkpoint = torch.load(checkpoint_path)
-            model.load_state_dict(checkpoint['model_state_dict'])
-            optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+            checkpoint = torch.load(checkpoint_path, map_location=device)  # Tải checkpoint lên GPU
+            model.load_state_dict(checkpoint['model_state_dict'])  # Sửa lỗi cú pháp
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            # Chuyển trạng thái optimizer sang GPU
+            for state in optimizer.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.to(device)
             global_step = checkpoint['global_step']
             start_epoch = checkpoint['epoch'] + 1  # Tiếp tục từ epoch tiếp theo
             print(f"Đã tải checkpoint từ bước {global_step}, epoch {checkpoint['epoch']}: {checkpoint_path}")
         else:
             print(f"Không tìm thấy checkpoint trong {path_weights}, bắt đầu từ đầu")
-            optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     else:
-        optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
-
-    # Thiết lập thiết bị và mô hình
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model.to(device)
-    model.train()
+        print("Bắt đầu huấn luyện từ đầu")
 
     # Tạo dataset cho huấn luyện
     train_dataset = ImgCaptionDataset(
@@ -85,6 +91,7 @@ def train(root_path, batch_size=4, num_epochs=2, lr=1e-5, load_weights=False, pa
     train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
 
     # Bắt đầu huấn luyện
+    model.train()
     for epoch in range(start_epoch, start_epoch + num_epochs):
         print(f"Epoch: {epoch + 1}")  # Hiển thị epoch bắt đầu từ 1 cho dễ hiểu
         # Thanh tiến trình cho batch trong epoch
