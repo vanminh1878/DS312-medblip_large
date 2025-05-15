@@ -193,7 +193,7 @@ def main():
 
     # Thêm subparser cho lệnh 'train'
     parser_train = subparsers.add_parser('train')
-    parser_train.add_argument('--root_path', type=str, default='/kaggle/input/oggyyy-dataset/')
+    parser_train.add_argument('--root_path', type=str, default='/kaggle/input/if-u-know-u-know/')
     parser_train.add_argument('--batch_size', type=int, default=4)
     parser_train.add_argument('--num_epochs', type=int, default=2)  # Đặt mặc định thành 2
     parser_train.add_argument('--lr', type=float, default=1e-5)
@@ -202,7 +202,7 @@ def main():
 
     # Thêm subparser cho lệnh 'predict'
     parser_predict = subparsers.add_parser('predict')
-    parser_predict.add_argument('--root_path', type=str, default='/kaggle/input/oggyyy-dataset/')
+    parser_predict.add_argument('--root_path', type=str, default='/kaggle/input/if-u-know-u-know/')
     parser_predict.add_argument('--path_weights', type=str, default='/kaggle/working/')
 
     # Phân tích tham số dòng lệnh
