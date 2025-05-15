@@ -1,5 +1,4 @@
 transformers==4.41.2
-tokenizers>=0.19.1
 bert_score==0.3.13
 rouge-score==0.1.2
 evaluate==0.4.2
