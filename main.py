@@ -148,13 +148,13 @@ def predict(root_path, path_weights="/kaggle/working/"):
     model.eval()
     model.to("cuda")
 
-    # Tải dữ liệu validation
-    df_valid = os.path.join(root_path, "valid/valid/valid_captions.csv")
-    df_valid = pd.read_csv(df_valid)
-    dir_valid = os.path.join(root_path, "valid/valid")
+    # # Tải dữ liệu validation
+    # df_valid = os.path.join(root_path, "valid/valid/valid_captions.csv")
+    # df_valid = pd.read_csv(df_valid)
+    # dir_valid = os.path.join(root_path, "valid/valid")
 
     dir_test = os.path.join(root_path, "test/test")
-    dir_caption = os.path.join(root_path, "valid/valid/valid_captions.csv")
+    #dir_caption = os.path.join(root_path, "valid/valid/valid_captions.csv")
 
     test_ID = os.listdir(dir_test)
     for i in range(len(test_ID)):
@@ -209,7 +209,7 @@ def main():
 
     # Thêm subparser cho lệnh 'predict'
     parser_predict = subparsers.add_parser('predict')
-    parser_predict.add_argument('--root_path', type=str, default='/kaggle/input/if-u-know-u-know/')
+    parser_predict.add_argument('--root_path', type=str, default='/kaggle/input/oggy-ds312/')
     parser_predict.add_argument('--path_weights', type=str, default='/kaggle/working/')
 
     # Phân tích tham số dòng lệnh
