@@ -184,11 +184,11 @@ def predict(root_path, path_weights="/kaggle/working/"):
     test_results = get_inferences(test_ID, model, dir_test)
     save_df_to_csv(test_results, "/kaggle/working/run.csv")
 
-    # Lấy kết quả dự đoán cho tập valid
-    valid_ID = df_valid["ID"]
-    valid_results = get_inferences(valid_ID, model, dir_valid)
-    save_df_to_csv(valid_results, "/kaggle/working/valid.csv")
-    len(valid_results)
+    # # Lấy kết quả dự đoán cho tập valid
+    # valid_ID = df_valid["ID"]
+    # valid_results = get_inferences(valid_ID, model, dir_valid)
+    # save_df_to_csv(valid_results, "/kaggle/working/valid.csv")
+    # len(valid_results)
 
 def main():
     """Hàm chính"""
