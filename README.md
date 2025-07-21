@@ -33,14 +33,18 @@ Parameters
 --path_weights: Path to save/load weights (default: ./)
 
 Note: The trained weights are saved as blip_large.pth in the path_weights directory, which is used for both saving and loading weights during training.
+
+```
 ## Prediction
 To generate captions for the test and validation sets, run:
+```bash
 python main.py predict --root_path /kaggle/input/official-imageclef-2025-dataset/ --path_weights /kaggle/working/
 
 Parameters
 
 --root_path: Path to the official ImageCLEFmedical 2025 dataset for prediction (default: ./)
 --path_weights: Path to the trained weights file (default: ./blip_large.pth)
+```
 
 Output: The prediction process generates two files:
 
